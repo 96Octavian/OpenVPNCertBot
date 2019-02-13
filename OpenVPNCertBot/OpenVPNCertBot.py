@@ -334,7 +334,7 @@ if __name__ == '__main__':
 	files = files_container()
 
 	# Store current PID
-	with open("/var/run/openvpncertbot/openvpncertbot.pid", "w") as f:
+	with open("/run/openvpncertbot/openvpncertbot.pid", "w") as f:
 		f.write(str(os.getpid()))
 
 	logger.info("File caricati, admin: %s", personal_id)
