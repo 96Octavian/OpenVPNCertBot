@@ -6,13 +6,22 @@ if ! openvpn --version 2> /dev/null | grep "OpenVPN Inc"; then
 	exit 1
 fi
 
+EASYRSA=""
 # Check if easyrsa is installed
-if ! easyrsa 2> /dev/null | grep "Easy-RSA 3"; then
-    echo "easyrsa not installed, aborting..."
+if easyrsa 2> /dev/null | grep "Easy-RSA 3"; then
+    EASYRSA=easyrsa
+fi
+# Check if PiVPN is installed. If it is, use custom easyrsa
+if pivpn 2> /dev/null | grep "PiVPN"; then
+    echo "Using PiVPN custom easyrsa"
+	EASYRSA=./easyrsa
+fi
+# If no easyrsa is installed, abort
+if [ -z "$EASYRSA" ]; then
+    echo "No easyrsa found. aborting..."
 	exit 1
 fi
 
-USERNAME=$3
 PASSWD=$2
 NAME=$1
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
@@ -23,12 +32,6 @@ CRT=".crt"
 KEY=".key"
 CA="ca.crt"
 TA="ta.key"
-EASYRSA=easyrsa
-# Check if PiVPN is installed. If it is, use custom easyrsa
-if pivpn 2> /dev/null | grep "PiVPN"; then
-    echo "Using PiVPN custom easyrsa"
-	EASYRSA=./easyrsa
-fi
 
 cd /etc/openvpn/easy-rsa || exit 1
 
@@ -98,9 +101,9 @@ echo "tls-auth Private Key found: $TA"
 
 } > "${NAME}${FILEEXT}"
 
-[ -d "${SCRIPTDIR}/ovpns" ] || mkdir -p "${SCRIPTDIR}/ovpns" && chown $USERNAME:$USERNAME "${SCRIPTDIR}/ovpns"
+[ -d "${SCRIPTDIR}/ovpns" ] || mkdir -p "${SCRIPTDIR}/ovpns" && chown openvpncertbot:openvpncertbot "${SCRIPTDIR}/ovpns"
 cp "${NAME}${FILEEXT}" "${SCRIPTDIR}/ovpns"
-chown $USERNAME:$USERNAME "${SCRIPTDIR}/ovpns/${NAME}${FILEEXT}"
+chown openvpncertbot:openvpncertbot "${SCRIPTDIR}/ovpns/${NAME}${FILEEXT}"
 
 echo "ovpn created"
 
@@ -119,7 +122,7 @@ echo "ovpn created"
     echo ""
     echo "[Service]"
     echo "Type=oneshot"
-    echo "ExecStart=${SCRIPTDIR}/revoker.sh ${NAME} ${USERNAME} 0"
+    echo "ExecStart=${SCRIPTDIR}/revoker.sh ${NAME} 0"
 } >> /etc/systemd/system/${NAME}.service
 
 systemctl start ${NAME}.timer

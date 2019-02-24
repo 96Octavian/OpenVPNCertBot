@@ -1,7 +1,6 @@
 #!/bin/bash
 
 NAME=$1
-USERNAME=$2
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 EASYRSA=easyrsa
 # Check if PiVPN is installed. If it is, use custom easyrsa
@@ -29,8 +28,8 @@ systemctl stop ${NAME}.timer
 rm -rf /etc/systemd/system/${NAME}.timer
 rm -rf /etc/systemd/system/${NAME}.service
 
-# If bot's PID is given as argument 3, notify the bot
-if [ ! -z "$3" ]
+# If bot's PID is given as argument 2, notify the bot
+if [ ! -z "$2" ]
 then
 	echo "${NAME}" >> "${SCRIPTDIR}/files/removed.lst"
 	pkill -10 -F /run/openvpncertbot/openvpncertbot.pid

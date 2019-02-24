@@ -5,12 +5,15 @@
 Manage your certificate on your VPN with this bot
 """
 
+# TODO: Try to add a Makefile
 # TODO: Check openvpn folder structure
 # TODO: Add license and credits
 # TODO: Allow owner to remove users
 # TODO: Improve instructions and info
+# TODO: Provide Default.txt
+# TODO: extract openvpn server info for client configuration (i.e. to populate Default.txt)
+# TODO: Create a Default.txt for every user of the bot
 
-import getpass
 import json
 import logging
 import os
@@ -185,7 +188,7 @@ def command_request(bot, update, args):
 	password = subprocess.getoutput("openssl rand -base64 10")
 
 	# Invoke bash script to create the file
-	process = subprocess.Popen(["sudo", "./adder.sh", cert_name, password, getpass.getuser()])
+	process = subprocess.Popen(["sudo", "./adder.sh", cert_name, password])
 	process.wait()
 	# If exitcode is non zero, fail
 	if process.returncode != 0:
@@ -243,7 +246,7 @@ def command_revoke(bot, update, args):
 		return
 
 	# Remove the certificate
-	process = subprocess.Popen(["sudo", "./revoker.sh", cert_name, getpass.getuser()])
+	process = subprocess.Popen(["sudo", "./revoker.sh", cert_name])
 	process.wait()
 	# If exitcode is non zero, fail
 	if process.returncode != 0:
