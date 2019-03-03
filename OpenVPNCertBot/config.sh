@@ -25,6 +25,10 @@ mkdir "${SCRIPTDIR}/defaults"
 # Create new user to execute the bot
 sudo useradd -G openvpncertbot,sudo -m openvpncertbot
 
+# Change files permissions and ownership
+chmod +x *.sh *.py
+sudo chown openvpncertbot:openvpncertbot *
+
 # Copy conf to tmpfiles.d
 sudo cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
 
