@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # Check if sudo is installed
 if ! command -v "sudo" >/dev/null 2>&1; then
 	echo "I need sudo to be installed. Aborting..."
