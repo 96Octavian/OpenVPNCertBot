@@ -19,6 +19,7 @@ import shutil
 from systemd.journal import JournaldLogHandler as JournalHandler
 import subprocess
 import sys
+import threading
 
 from signal import (signal, SIGINT, SIGTERM, SIGABRT, SIGUSR1, SIGUSR2)
 from time import sleep
@@ -38,10 +39,13 @@ logger.addHandler(log_ch)
 
 class files_container():
 	def __init__(self):
+		lock = threading.Lock()
 		self.users = {}
 		self.awaiting = {}
 
 	def load_all(self):
+
+		self.lock.acquire()
 
 		with open('./files/users.json', 'r') as f:
 			self.users = json.load(f)
@@ -49,13 +53,17 @@ class files_container():
 		with open('./files/awaiting.json', 'r') as f:
 			self.awaiting = json.load(f)
 
+		self.lock.acquire()
+
 		logger.debug("All files opened")
 		return
 
 	# To be called whenever a file is modified
 	def store(self, file_var, name):
+		self.lock.acquire()
 		with open('./files/%s.json' % name, 'w') as json_file:
 			json.dump(file_var, json_file, sort_keys=True, indent=4, separators=(',', ': '))
+		self.lock.release()
 		logger.debug("updated file %s.json", name)
 		return
 
@@ -81,6 +89,8 @@ def command_start(update, context):
 # Ask for subscription
 def command_subscribe(update, context):
 
+	files.lock.acquire()
+
 	# Check if it has already subscribed
 	if str(update.message.from_user.id) in files.users:
 		update.message.reply_text(text="Sei già iscritto.")
@@ -93,7 +103,7 @@ def command_subscribe(update, context):
 
 	# Add him to the waiting list
 	files.awaiting[str(update.message.from_user.id)] = update.message.from_user.first_name
-	files.store(files.awaiting, "awaiting")
+
 	update.message.reply_text(text="Grazie. La tua iscrizione è in attesa di convalida.")
 	logger.info("Utente %s in attesa di convalida", str(update.message.from_user.id))
 
@@ -101,8 +111,14 @@ def command_subscribe(update, context):
 	message = "Utenti in attesa:\n"
 	for line in files.awaiting:
 		message += files.awaiting[line] + '\n'
+
+	files.lock.release()
+
 	context.bot.sendMessage(ADMIN, text=message)
 	message = None
+
+	files.store(files.awaiting, "awaiting")
+
 	return
 
 # Check pending subscribe requests
@@ -113,6 +129,8 @@ def command_check(update, context):
 		update.message.reply_text(text="Non sei autorizzato.")
 		return
 
+	files.lock.acquire()
+
 	# Check if there are awaiting users
 	if files.awaiting.keys():
 		message = "Utenti in attesa:\n"
@@ -122,6 +140,9 @@ def command_check(update, context):
 		message = None
 	else:
 		context.bot.sendMessage(ADMIN, "Nessun utente in attesa di approvazione")
+
+	files.lock.release()
+
 	return
 
 # Approve a user(s) subscribe request(s)
@@ -137,6 +158,9 @@ def command_approve(update, context):
 
 	# Remove the user from the waiting list and append it to the authorized one
 	message = ""
+
+	files.lock.acquire()
+
 	for e in args:
 		for user_id in list(files.awaiting):
 			if files.awaiting[user_id] == e:
@@ -149,16 +173,21 @@ def command_approve(update, context):
 	else:
 		message = "Nessun utente autorizzato"
 
-	files.store(files.users, "users")
-	files.store(files.awaiting, "awaiting")
+	files.lock.release()
 
 	context.bot.sendMessage(chat_id=ADMIN, text=message)
 	logger.info(message)
 	message = None
+
+	files.store(files.users, "users")
+	files.store(files.awaiting, "awaiting")
+
 	return
 
 # Create a certificate with a given name
 def command_request(update, context):
+
+	files.lock.acquire()
 
 	# Check if the user has subscribed
 	if str(update.message.from_user.id) not in files.users:
@@ -176,6 +205,8 @@ def command_request(update, context):
 		if cert_name in files.users[user]:
 			update.message.reply_text(text="Il nome è già in uso")
 			return
+	files.lock.release()
+
 	if cert_name in ["server", "ta", "car"]:
 		update.message.reply_text(text="Il nome è già in uso")
 		return
@@ -188,24 +219,32 @@ def command_request(update, context):
 	process.wait()
 	# If exitcode is non zero, fail
 	if process.returncode != 0:
-		files.users[str(update.message.from_user.id)].remove(cert_name)
 		update.message.reply_text(text="Qualcosa è andato storto, riprova")
 		return
 
+	files.lock.acquire()
+
 	# Add file name to the list
 	files.users[str(update.message.from_user.id)].append(cert_name)
+
+	files.lock.release()
 
 	# Send the file to the user
 	update.message.reply_document(open("ovpns/" + cert_name + '.ovpn', 'rb'),\
 		caption='Password: ' + password)
 	update.message.reply_text(text="Certificato generato")
 
-	files.store(files.users, "users")
 	logger.info("Certificato %s per l'utente %s aggiunto", cert_name, str(update.message.from_user.id))
+
+	files.store(files.users, "users")
+
 	return
 
 # List a user's certificates
 def command_list_certificates(update, context):
+	
+	files.lock.acquire()
+
 	# Check if the user has subscribed
 	if str(update.message.from_user.id) not in files.users:
 		update.message.reply_text(text="Non sei autorizzato.")
@@ -215,6 +254,9 @@ def command_list_certificates(update, context):
 	message = ""
 	for cert in files.users[str(update.message.from_user.id)]:
 		message += cert + '\n'
+
+	files.lock.release()
+
 	if message:
 		message = "Possiedi i seguenti certificati:\n" + message
 	else:
@@ -225,6 +267,9 @@ def command_list_certificates(update, context):
 
 # Remove a certificate
 def command_revoke(update, context):
+
+	files.lock.acquire()
+
 	# Check if the user has subscribed
 	if str(update.message.from_user.id) not in files.users:
 		update.message.reply_text(text="Non sei autorizzato")
@@ -241,6 +286,8 @@ def command_revoke(update, context):
 		update.message.reply_text(text="Certificato non trovato")
 		return
 
+	files.lock.release()
+
 	# Remove the certificate
 	process = subprocess.Popen(["sudo", "./revoker.sh", cert_name])
 	process.wait()
@@ -250,9 +297,11 @@ def command_revoke(update, context):
 		return
 
 	files.users[str(update.message.from_user.id)].remove(cert_name)
-	files.store(files.users, "users")
 	update.message.reply_text(text="Certificato rimosso")
 	logger.info("Certificato %s dell'utente %s rimosso", cert_name, update.message.from_user.id)
+
+	files.store(files.users, "users")
+
 	return
 
 def error_logger(bot, update, error):
@@ -284,6 +333,7 @@ def signalHandler(signum, frame):
 
 	logger.info("Received signal {}".format(signum))
 
+	files.lock.acquire()
 	try:
 		with open("./files/removed.lst", "r") as f:
 			removed = f.read().splitlines()
@@ -293,6 +343,9 @@ def signalHandler(signum, frame):
 
 	for e in files.users:
 		files.users[e] = [x for x in files.users[e] if x not in removed]
+
+	files.lock.release()
+
 	files.store(files.users, "users")
 
 	return
