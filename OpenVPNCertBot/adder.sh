@@ -22,11 +22,12 @@ if [ -z "$EASYRSA" ]; then
 	exit 1
 fi
 
+USERID=$3
 PASSWD=$2
 NAME=$1
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-DEFAULT="Default.txt"
+DEFAULT="${SCRIPTDIR}/defaults/default_${USERID}.txt"
 FILEEXT=".ovpn"
 CRT=".crt"
 KEY=".key"

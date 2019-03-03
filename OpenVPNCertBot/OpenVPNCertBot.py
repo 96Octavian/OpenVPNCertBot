@@ -5,18 +5,17 @@
 Manage your certificate on your VPN with this bot
 """
 
-# TODO: Try to add a Makefile
-# TODO: Check openvpn folder structure
+# TODO: Make files_container() thread safe
 # TODO: Add license and credits
 # TODO: Allow owner to remove users
 # TODO: Improve instructions and info
-# TODO: Provide Default.txt
 # TODO: extract openvpn server info for client configuration (i.e. to populate Default.txt)
-# TODO: Create a Default.txt for every user of the bot
+# TODO: Copy the authorized() and args for every function from the other bot
 
 import json
 import logging
 import os
+import shutil
 from systemd.journal import JournaldLogHandler as JournalHandler
 import subprocess
 import sys
@@ -61,15 +60,14 @@ class files_container():
 		return
 
 # Check if it is me
-def authorized(chat_id):
-	if str(chat_id) == personal_id:
+def authorized(update):
+	if str(update.message.chat.id) == ADMIN:
 		return True
 	return False
 
 # First message to be sent
-def command_start(bot, update):
-	bot.sendMessage(chat_id=update.message.chat_id,\
-				 text="Questo bot ti aiuterà a ricevere e rinnovare i tuoi certificati .ovpn.\n\
+def command_start(update, context):
+	update.message.reply_text(text="Questo bot ti aiuterà a ricevere e rinnovare i tuoi certificati .ovpn.\n\
 				 Dopo aver richiesto l'iscrizione, sarai approvato e riceverai un certificato.\n\
 				 Questo sarà revocato dopo una settimana e dovrai richiederne uno nuovo.\n\
 				 Questi sono i comandi a tua disposizione:\n\
@@ -81,40 +79,38 @@ def command_start(bot, update):
 	return
 
 # Ask for subscription
-def command_subscribe(bot, update):
+def command_subscribe(update, context):
 
 	# Check if it has already subscribed
 	if str(update.message.from_user.id) in files.users:
-		bot.sendMessage(chat_id=update.message.chat_id, text="Sei già iscritto.")
+		update.message.reply_text(text="Sei già iscritto.")
 		return
 
 	# Check if it is already in list for approval
 	if str(update.message.from_user.id) in files.awaiting:
-		bot.sendMessage(chat_id=update.message.chat_id,\
-			text="Grazie. La tua iscrizione è in attesa di convalida.")
+		update.message.reply_text(text="Grazie. La tua iscrizione è in attesa di convalida.")
 		return
 
 	# Add him to the waiting list
 	files.awaiting[str(update.message.from_user.id)] = update.message.from_user.first_name
 	files.store(files.awaiting, "awaiting")
-	bot.sendMessage(chat_id=update.message.chat_id,\
-		text="Grazie. La tua iscrizione è in attesa di convalida.")
+	update.message.reply_text(text="Grazie. La tua iscrizione è in attesa di convalida.")
 	logger.info("Utente %s in attesa di convalida", str(update.message.from_user.id))
 
 	# Inform me of a new subscriber
 	message = "Utenti in attesa:\n"
 	for line in files.awaiting:
 		message += files.awaiting[line] + '\n'
-	bot.sendMessage(personal_id, text=message)
+	context.bot.sendMessage(ADMIN, text=message)
 	message = None
 	return
 
 # Check pending subscribe requests
-def command_check(bot, update):
+def command_check(update, context):
 
 	# If the sender is not me, discard
-	if not authorized(update.message.from_user.id):
-		bot.sendMessage(chat_id=update.message.chat_id, text="Non sei autorizzato.")
+	if not authorized(update):
+		update.message.reply_text(text="Non sei autorizzato.")
 		return
 
 	# Check if there are awaiting users
@@ -122,19 +118,22 @@ def command_check(bot, update):
 		message = "Utenti in attesa:\n"
 		for user_id in files.awaiting:
 			message += files.awaiting[user_id] + '\n'
-		bot.sendMessage(chat_id=update.message.chat_id, text=message)
+		context.bot.sendMessage(ADMIN, text=message)
 		message = None
 	else:
-		bot.sendMessage(personal_id, "Nessun utente in attesa di approvazione")
+		context.bot.sendMessage(ADMIN, "Nessun utente in attesa di approvazione")
 	return
 
 # Approve a user(s) subscribe request(s)
-def command_approve(bot, update, args):
+def command_approve(update, context):
 
 	# If the sender is not me, discard
-	if not authorized(update.message.from_user.id):
-		bot.SendMessage(update.message.from_user.id, "Non sei autorizzato.")
+	if not authorized(update):
+		context.bot.SendMessage(update.message.from_user.id, "Non sei autorizzato.")
 		return
+
+	# Copy the defaults.txt file
+	shutil.copyfile("default.txt", "defaults/default_{}.txt".format(str(update.message.from_user.id)))
 
 	# Remove the user from the waiting list and append it to the authorized one
 	message = ""
@@ -153,66 +152,63 @@ def command_approve(bot, update, args):
 	files.store(files.users, "users")
 	files.store(files.awaiting, "awaiting")
 
-	bot.sendMessage(chat_id=personal_id, text=message)
+	context.bot.sendMessage(chat_id=ADMIN, text=message)
 	logger.info(message)
 	message = None
 	return
 
 # Create a certificate with a given name
-def command_request(bot, update, args):
+def command_request(update, context):
 
 	# Check if the user has subscribed
 	if str(update.message.from_user.id) not in files.users:
-		bot.sendMessage(chat_id=update.message.chat.id, text="Non sei autorizzato")
+		update.message.reply_text(text="Non sei autorizzato")
 		return
 
 	# Check if he provided a name for the file
 	if len(args) != 1:
-		bot.sendMessage(chat_id=update.message.chat.id, text="Specifica solo il nome del certificato")
+		update.message.reply_text(text="Specifica solo il nome del certificato")
 		return
 
 	# Check if the provided name is permitted
 	cert_name = args[0]
 	for user in files.users:
 		if cert_name in files.users[user]:
-			bot.sendMessage(chat_id=update.message.chat.id, text="Il nome è già in uso")
+			update.message.reply_text(text="Il nome è già in uso")
 			return
 	if cert_name in ["server", "ta", "car"]:
-		bot.sendMessage(chat_id=update.message.chat.id, text="Il nome è già in uso")
+		update.message.reply_text(text="Il nome è già in uso")
 		return
-
-	# Add file name to the list
-	files.users[str(update.message.from_user.id)].append(cert_name)
 
 	# Generate a random password for the file, using bash and openssl command
 	password = subprocess.getoutput("openssl rand -base64 10")
 
 	# Invoke bash script to create the file
-	process = subprocess.Popen(["sudo", "./adder.sh", cert_name, password])
+	process = subprocess.Popen(["sudo", "./adder.sh", cert_name, password, update.message.from_user.id])
 	process.wait()
 	# If exitcode is non zero, fail
 	if process.returncode != 0:
 		files.users[str(update.message.from_user.id)].remove(cert_name)
-		bot.sendMessage(chat_id=update.message.chat.id,\
-				  text="Qualcosa è andato storto, riprova")
+		update.message.reply_text(text="Qualcosa è andato storto, riprova")
 		return
 
-	# Send the file to the user
-	bot.sendDocument(update.message.chat.id,\
-		open("ovpns/" + cert_name + '.ovpn', 'rb'),\
-		caption='Password: ' + password)
-	bot.sendMessage(update.message.chat.id, text="Certificato generato")
+	# Add file name to the list
+	files.users[str(update.message.from_user.id)].append(cert_name)
 
-	
+	# Send the file to the user
+	update.message.reply_document(open("ovpns/" + cert_name + '.ovpn', 'rb'),\
+		caption='Password: ' + password)
+	update.message.reply_text(text="Certificato generato")
+
 	files.store(files.users, "users")
 	logger.info("Certificato %s per l'utente %s aggiunto", cert_name, str(update.message.from_user.id))
 	return
 
 # List a user's certificates
-def command_list_certificates(bot, update):
+def command_list_certificates(update, context):
 	# Check if the user has subscribed
 	if str(update.message.from_user.id) not in files.users:
-		bot.sendMessage(chat_id=update.message.chat.id, text="Non sei autorizzato.")
+		update.message.reply_text(text="Non sei autorizzato.")
 		return
 
 	# List every certificate he owns
@@ -223,26 +219,26 @@ def command_list_certificates(bot, update):
 		message = "Possiedi i seguenti certificati:\n" + message
 	else:
 		message = "Non hai certificati"
-	bot.sendMessage(chat_id=update.message.chat.id, text=message)
+	update.message.reply_text(text=message)
 	message = None
 	return
 
 # Remove a certificate
-def command_revoke(bot, update, args):
+def command_revoke(update, context):
 	# Check if the user has subscribed
 	if str(update.message.from_user.id) not in files.users:
-		bot.sendMessage(chat_id=update.message.chat.id, text="Non sei autorizzato")
+		update.message.reply_text(text="Non sei autorizzato")
 		return
 
 	# Check if he provided a name for the file
 	if len(args) != 1:
-		bot.sendMessage(chat_id=update.message.chat.id, text="Specifica solo il nome del certificato")
+		update.message.reply_text(text="Specifica solo il nome del certificato")
 		return
 
 	cert_name = args[0]
 	# Check if that certificate exists
 	if cert_name not in files.users[str(update.message.from_user.id)]:
-		bot.sendMessage(chat_id=update.message.chat.id, text="Certificato non trovato")
+		update.message.reply_text(text="Certificato non trovato")
 		return
 
 	# Remove the certificate
@@ -250,12 +246,12 @@ def command_revoke(bot, update, args):
 	process.wait()
 	# If exitcode is non zero, fail
 	if process.returncode != 0:
-		bot.sendMessage(chat_id=update.message.chat.id, text="Qualcosa è andato storto, riprova")
+		update.message.reply_text(text="Qualcosa è andato storto, riprova")
 		return
 
 	files.users[str(update.message.from_user.id)].remove(cert_name)
 	files.store(files.users, "users")
-	bot.sendMessage(chat_id=update.message.chat.id, text="Certificato rimosso")
+	update.message.reply_text(text="Certificato rimosso")
 	logger.info("Certificato %s dell'utente %s rimosso", cert_name, update.message.from_user.id)
 	return
 
@@ -333,12 +329,12 @@ def main():
 	my_idle(updater)
 
 if __name__ == '__main__':
-	personal_id = sys.argv[2]
+	ADMIN = sys.argv[2]
 	files = files_container()
 
 	# Store current PID
 	with open("/run/openvpncertbot/openvpncertbot.pid", "w") as f:
 		f.write(str(os.getpid()))
 
-	logger.info("File caricati, admin: %s", personal_id)
+	logger.info("File caricati, admin: %s", ADMIN)
 	main()

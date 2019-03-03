@@ -6,11 +6,21 @@ if ! command -v "sudo" >/dev/null 2>&1; then
 	exit 1
 fi
 
+if [ -z "$1" ]
+then
+	echo "You must specify a public IPv4 address or a domain name"
+	exit 1
+fi
+
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+# Write the provided server address
+sed -i -e "s/IPV4PUB/$1/g" default.txt
 
 # Create local folders
 mkdir "${SCRIPTDIR}/files"
 mkdir "${SCRIPTDIR}/ovpns"
+mkdir "${SCRIPTDIR}/defaults"
 
 # Create new user to execute the bot
 sudo useradd -G openvpncertbot,sudo -m openvpncertbot
@@ -20,3 +30,7 @@ sudo cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
 
 # Move all the files to the new user
 mv "${SCRIPTDIR}" /home/openvpncertbot/
+
+# Give the user some info
+echo "The file default.txt will be used to provide clients with configuration. Edit it to suit your needs."
+echo "In addition, in the \"defaults\\\" folder every user will have its own base file"
