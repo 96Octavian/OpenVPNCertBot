@@ -8,6 +8,11 @@ if ! command -v "sudo" >/dev/null 2>&1; then
 	exit 1
 fi
 
+if [ "$(id -u)" != "0" ]; then
+	echo "Sorry, you are not root."
+	exit 1
+fi
+
 if [ -z "$1" ]
 then
 	echo "You must specify a public IPv4 address or a domain name"
@@ -25,7 +30,7 @@ mkdir "${SCRIPTDIR}/ovpns"
 mkdir "${SCRIPTDIR}/defaults"
 
 # Create new user to execute the bot
-sudo useradd -G openvpncertbot,sudo -m openvpncertbot
+useradd -m openvpncertbot
 
 # Change files permissions and ownership
 chmod +x *.sh *.py

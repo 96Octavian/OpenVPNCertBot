@@ -26,7 +26,6 @@
   <ItemGroup>
     <Content Include="adder.sh" />
     <Content Include="config.sh" />
-    <Content Include="default.txt" />
     <Content Include="revoker.sh" />
     <Content Include="openvpncertbot.conf" />
   </ItemGroup>

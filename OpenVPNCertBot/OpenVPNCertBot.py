@@ -5,6 +5,7 @@
 Manage your certificate on your VPN with this bot
 """
 
+# TODO: Add bot group or user to sudoers
 # TODO: Make files_container() thread safe
 # TODO: Add license and credits
 # TODO: Allow owner to remove users
@@ -40,7 +41,9 @@ logger.addHandler(log_ch)
 class files_container():
 	def __init__(self):
 		lock = threading.Lock()
+		self.users_list = []
 		self.users = {}
+		self.certs = []
 		self.awaiting = {}
 
 	def load_all(self):
@@ -53,10 +56,33 @@ class files_container():
 		with open('./files/awaiting.json', 'r') as f:
 			self.awaiting = json.load(f)
 
-		self.lock.acquire()
+		self.users_list = self.users.keys()
+
+		self.certs = [cert for certlist in self.users.values() for cert in certlist]
+
+		self.lock.release()
 
 		logger.debug("All files opened")
 		return
+
+	# Return true if user is subscribed
+	def isSubscribed(self, user):
+		return str(user) in self.users_list
+
+	# Return true if the user needs validation
+	def isAwaiting(self, user):
+		return str(user) in self.awaiting
+
+	# Add a user to the awaiting list
+	def addAwaiting(self, user, name):
+		self.lock.acquire()
+		self.awaiting[str(user)] = str(name)
+		self.lock.release()
+		self.store(self.awaiting, "awaiting")
+		return
+
+	def listAwaiting(self):
+		return self.awaiting.values()
 
 	# To be called whenever a file is modified
 	def store(self, file_var, name):
@@ -89,35 +115,33 @@ def command_start(update, context):
 # Ask for subscription
 def command_subscribe(update, context):
 
-	files.lock.acquire()
 
 	# Check if it has already subscribed
-	if str(update.message.from_user.id) in files.users:
+	if files.isSubscribed(update.message.from_user.id):
 		update.message.reply_text(text="Sei già iscritto.")
 		return
 
 	# Check if it is already in list for approval
-	if str(update.message.from_user.id) in files.awaiting:
+	if files.isAwaiting(update.message.from_user.id):
 		update.message.reply_text(text="Grazie. La tua iscrizione è in attesa di convalida.")
 		return
 
 	# Add him to the waiting list
-	files.awaiting[str(update.message.from_user.id)] = update.message.from_user.first_name
+	files.addAwaiting(update.message.from_user.id, update.message.from_user.first_name)
 
 	update.message.reply_text(text="Grazie. La tua iscrizione è in attesa di convalida.")
 	logger.info("Utente %s in attesa di convalida", str(update.message.from_user.id))
 
-	# Inform me of a new subscriber
-	message = "Utenti in attesa:\n"
-	for line in files.awaiting:
-		message += files.awaiting[line] + '\n'
-
-	files.lock.release()
-
-	context.bot.sendMessage(ADMIN, text=message)
-	message = None
-
-	files.store(files.awaiting, "awaiting")
+	# Check if there are awaiting users
+	users = files.listAwaiting()
+	if users:
+		message = "Utenti in attesa:\n"
+		for user_id in users:
+			message += user_id + '\n'
+		context.bot.sendMessage(ADMIN, text=message)
+		message = None
+	else:
+		context.bot.sendMessage(ADMIN, "Nessun utente in attesa di approvazione")
 
 	return
 
@@ -129,19 +153,15 @@ def command_check(update, context):
 		update.message.reply_text(text="Non sei autorizzato.")
 		return
 
-	files.lock.acquire()
-
 	# Check if there are awaiting users
-	if files.awaiting.keys():
+	users = files.listAwaiting()
+	if users:
 		message = "Utenti in attesa:\n"
-		for user_id in files.awaiting:
-			message += files.awaiting[user_id] + '\n'
+		for user_id in users:
+			message += user_id + '\n'
 		context.bot.sendMessage(ADMIN, text=message)
-		message = None
 	else:
 		context.bot.sendMessage(ADMIN, "Nessun utente in attesa di approvazione")
-
-	files.lock.release()
 
 	return
 
