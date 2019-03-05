@@ -6,12 +6,10 @@ Manage your certificate on your VPN with this bot
 """
 
 # TODO: Add bot group or user to sudoers
-# TODO: Make files_container() thread safe
 # TODO: Add license and credits
 # TODO: Allow owner to remove users
 # TODO: Improve instructions and info
 # TODO: extract openvpn server info for client configuration (i.e. to populate Default.txt)
-# TODO: Copy the authorized() and args for every function from the other bot
 
 import json
 import logging
@@ -71,18 +69,60 @@ class files_container():
 
 	# Return true if the user needs validation
 	def isAwaiting(self, user):
-		return str(user) in self.awaiting
+		return str(user) in self.awaiting.values()
 
-	# Add a user to the awaiting list
+	# Add a user to the waiting list
 	def addAwaiting(self, user, name):
 		self.lock.acquire()
-		self.awaiting[str(user)] = str(name)
+		self.awaiting[str(name)] = str(user)
 		self.lock.release()
 		self.store(self.awaiting, "awaiting")
 		return
 
+	# Return a list of waiting users
 	def listAwaiting(self):
-		return self.awaiting.values()
+		return self.awaiting.keys()
+
+	# Approve users and return a list of approved names
+	def approveAwaiting(self, usernames):
+		self.lock.acquire()
+		approved = []
+		for name in usernames:
+			if name in self.awaiting:
+				id = self.awaiting.pop(name)
+				if id not in self.users:
+					self.users[id] = []
+					approved.append(id)
+		self.users_list = self.users.keys()
+		self.lock.release()
+		self.store(self.awaiting, "awaiting")
+		self.store(self.users, "users")
+		return approved
+
+	# Returns True if a name is not in use
+	def isValidCertName(self, name):
+		return not (name in self.certs or name in ["server", "ta", "car"])
+
+	# Adds a certificate for a user
+	def addCert(self, user, name):
+		self.lock.acquire()
+		self.users[str(user)].append(name)
+		self.certs.append(name)
+		self.lock.release()
+		self.store(self.users, "users")
+		return
+
+	# Lists a user's certificates
+	def listUserCerts(self, user):
+		return self.users[str(user)]
+
+	# Remove a user's certificate
+	def removeCert(self, user, cert):
+		self.lock.acquire()
+		self.users[str(user)].remove(cert)
+		self.certs.remove(cert)
+		self.lock.release()
+		self.store(self.users, "users")
 
 	# To be called whenever a file is modified
 	def store(self, file_var, name):
@@ -115,8 +155,7 @@ def command_start(update, context):
 # Ask for subscription
 def command_subscribe(update, context):
 
-
-	# Check if it has already subscribed
+	# Check if he has already subscribed
 	if files.isSubscribed(update.message.from_user.id):
 		update.message.reply_text(text="Sei già iscritto.")
 		return
@@ -128,7 +167,6 @@ def command_subscribe(update, context):
 
 	# Add him to the waiting list
 	files.addAwaiting(update.message.from_user.id, update.message.from_user.first_name)
-
 	update.message.reply_text(text="Grazie. La tua iscrizione è in attesa di convalida.")
 	logger.info("Utente %s in attesa di convalida", str(update.message.from_user.id))
 
@@ -179,55 +217,35 @@ def command_approve(update, context):
 	# Remove the user from the waiting list and append it to the authorized one
 	message = ""
 
-	files.lock.acquire()
-
-	for e in args:
-		for user_id in list(files.awaiting):
-			if files.awaiting[user_id] == e:
-				files.awaiting.pop(user_id)
-				files.users[user_id] = []
-				bot.sendMessage(user_id, "Sei stato autorizzato.")
-				message += e + '\n'
-	if message:
-		message = "Utenti autorizzati:\n" + message
+	approved = files.approveAwaiting(context.args)
+	if approved:
+		for id in approved:
+			context.bot.sendMessage(id, "Sei stato autorizzato")
+		message = "{} utenti autorizzati".format(len(approved))
 	else:
 		message = "Nessun utente autorizzato"
 
-	files.lock.release()
-
-	context.bot.sendMessage(chat_id=ADMIN, text=message)
 	logger.info(message)
-	message = None
-
-	files.store(files.users, "users")
-	files.store(files.awaiting, "awaiting")
+	update.message.reply_text(message)
 
 	return
 
 # Create a certificate with a given name
 def command_request(update, context):
 
-	files.lock.acquire()
-
-	# Check if the user has subscribed
-	if str(update.message.from_user.id) not in files.users:
+	# Check if he has already subscribed
+	if not files.isSubscribed(update.message.from_user.id):
 		update.message.reply_text(text="Non sei autorizzato")
 		return
 
 	# Check if he provided a name for the file
-	if len(args) != 1:
+	if len(context.args) != 1:
 		update.message.reply_text(text="Specifica solo il nome del certificato")
 		return
 
 	# Check if the provided name is permitted
 	cert_name = args[0]
-	for user in files.users:
-		if cert_name in files.users[user]:
-			update.message.reply_text(text="Il nome è già in uso")
-			return
-	files.lock.release()
-
-	if cert_name in ["server", "ta", "car"]:
+	if not files.isValidCertName(cert_name):
 		update.message.reply_text(text="Il nome è già in uso")
 		return
 
@@ -242,12 +260,8 @@ def command_request(update, context):
 		update.message.reply_text(text="Qualcosa è andato storto, riprova")
 		return
 
-	files.lock.acquire()
-
 	# Add file name to the list
-	files.users[str(update.message.from_user.id)].append(cert_name)
-
-	files.lock.release()
+	files.addCert(update.message.from_user.id, cert_name)
 
 	# Send the file to the user
 	update.message.reply_document(open("ovpns/" + cert_name + '.ovpn', 'rb'),\
@@ -256,42 +270,32 @@ def command_request(update, context):
 
 	logger.info("Certificato %s per l'utente %s aggiunto", cert_name, str(update.message.from_user.id))
 
-	files.store(files.users, "users")
-
 	return
 
 # List a user's certificates
 def command_list_certificates(update, context):
 	
-	files.lock.acquire()
-
-	# Check if the user has subscribed
-	if str(update.message.from_user.id) not in files.users:
-		update.message.reply_text(text="Non sei autorizzato.")
+	# Check if he has already subscribed
+	if not files.isSubscribed(update.message.from_user.id):
+		update.message.reply_text(text="Non sei autorizzato")
 		return
 
 	# List every certificate he owns
-	message = ""
-	for cert in files.users[str(update.message.from_user.id)]:
-		message += cert + '\n'
-
-	files.lock.release()
-
-	if message:
-		message = "Possiedi i seguenti certificati:\n" + message
+	certs = files.listUserCerts(update.message.from_user.id)
+	if certs:
+		message = "Possiedi i seguenti certificati:\n"
+		for cert in certs:
+			message += cert + '\n'
 	else:
 		message = "Non hai certificati"
 	update.message.reply_text(text=message)
-	message = None
 	return
 
 # Remove a certificate
 def command_revoke(update, context):
 
-	files.lock.acquire()
-
-	# Check if the user has subscribed
-	if str(update.message.from_user.id) not in files.users:
+	# Check if he has already subscribed
+	if not files.isSubscribed(update.message.from_user.id):
 		update.message.reply_text(text="Non sei autorizzato")
 		return
 
@@ -302,11 +306,9 @@ def command_revoke(update, context):
 
 	cert_name = args[0]
 	# Check if that certificate exists
-	if cert_name not in files.users[str(update.message.from_user.id)]:
+	if cert_name not in files.listUserCerts(update.message.from_user.id):
 		update.message.reply_text(text="Certificato non trovato")
 		return
-
-	files.lock.release()
 
 	# Remove the certificate
 	process = subprocess.Popen(["sudo", "./revoker.sh", cert_name])
@@ -316,11 +318,9 @@ def command_revoke(update, context):
 		update.message.reply_text(text="Qualcosa è andato storto, riprova")
 		return
 
-	files.users[str(update.message.from_user.id)].remove(cert_name)
+	files.removeCert(update.message.from_user.id, cert_name)
 	update.message.reply_text(text="Certificato rimosso")
 	logger.info("Certificato %s dell'utente %s rimosso", cert_name, update.message.from_user.id)
-
-	files.store(files.users, "users")
 
 	return
 
