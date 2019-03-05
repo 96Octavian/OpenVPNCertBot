@@ -42,6 +42,9 @@ sudo cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
 # Move all the files to the new user
 mv "${SCRIPTDIR}" /home/openvpncertbot/
 
+# Add user to sudoers
+echo "openvpncertbot ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/010_openvpncertbot
+
 # Give the user some info
 echo "The file default.txt will be used to provide clients with configuration. Edit it to suit your needs."
 echo "In addition, in the \"defaults\\\" folder every user will have its own base file"

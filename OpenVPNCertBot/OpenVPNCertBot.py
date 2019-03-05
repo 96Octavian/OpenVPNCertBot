@@ -5,11 +5,10 @@
 Manage your certificate on your VPN with this bot
 """
 
-# TODO: Add bot group or user to sudoers
 # TODO: Add license and credits
 # TODO: Allow owner to remove users
 # TODO: Improve instructions and info
-# TODO: extract openvpn server info for client configuration (i.e. to populate Default.txt)
+# TODO: extract openvpn server info for client configuration (i.e. to populate default.txt)
 
 import json
 import logging
