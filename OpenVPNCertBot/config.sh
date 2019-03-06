@@ -64,34 +64,45 @@ fi
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # Create local folders
+echo "Creating files..."
 mkdir "${SCRIPTDIR}/files"
+echo "Creating ovpns..."
 mkdir "${SCRIPTDIR}/ovpns"
+echo "Creating defaults..."
 mkdir "${SCRIPTDIR}/defaults"
 
 # Copy conf to tmpfiles.d
+echo "Copying openvpncertbot.conf to /etc/tmpfiles.d/openvpncertbot.conf"
 cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
 
 # Create new user to execute the bot
+echo "Creating new user..."
 useradd -m openvpncertbot
 
 # Move all the files to the new user
+echo "Copying directory to new user..."
 cp -r "${SCRIPTDIR}" /home/openvpncertbot/
 
 # Change files permissions and ownership
 cd /home/openvpncertbot/OpenVPNCertBot
+echo "Changing permission and ownership..."
 chmod +x *.sh *.py
 chown openvpncertbot:openvpncertbot *
 
 # Write the provided server address
+echo "Using server address..."
 sed -i -e "s/IPV4PUB/$1/g" default.txt
 
 # Add user to sudoers
+echo "Granting user sudoers rights..."
 echo "openvpncertbot ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/010_openvpncertbot
 
 # Enable openvpncertbot.service
+echo "Usign Token and admin..."
 sed -i -e "s/TOKEN/${TOKEN}/g" openvpncertbot.service
 sed -i -e "s/ADMIN/${ADMIN}/g" openvpncertbot.service
 
+echo "Setting up systemd unit..."
 cp openvpncertbot.service /etc/systemd/system/openvpncertbot.service
 
 # Give the user some info
