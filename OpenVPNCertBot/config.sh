@@ -74,6 +74,7 @@ useradd -m openvpncertbot
 # Move all the files to the new user
 echo "Copying directory to new user..."
 cp -r "${SCRIPTDIR}" /home/openvpncertbot/
+chown -R openvpncertbot:openvpncertbot /home/openvpncertbot/OpenVPNCertBot
 cd /home/openvpncertbot/OpenVPNCertBot
 
 # Create local folders
@@ -87,7 +88,6 @@ mkdir "defaults"
 # Change files permissions and ownership
 echo "Changing permission and ownership..."
 chmod +x *.sh *.py
-chown openvpncertbot:openvpncertbot *
 
 # Write the provided server address
 echo "Using server address..."
