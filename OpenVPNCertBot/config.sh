@@ -75,7 +75,7 @@ cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
 useradd -m openvpncertbot
 
 # Move all the files to the new user
-cp "${SCRIPTDIR}" /home/openvpncertbot/
+cp -r "${SCRIPTDIR}" /home/openvpncertbot/
 
 # Change files permissions and ownership
 cd /home/openvpncertbot/OpenVPNCertBot
