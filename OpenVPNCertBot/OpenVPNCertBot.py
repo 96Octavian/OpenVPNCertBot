@@ -37,7 +37,7 @@ logger.addHandler(log_ch)
 
 class files_container():
 	def __init__(self):
-		lock = threading.Lock()
+		self.lock = threading.Lock()
 		self.users_list = []
 		self.users = {}
 		self.certs = []
