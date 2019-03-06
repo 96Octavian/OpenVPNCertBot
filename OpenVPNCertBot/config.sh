@@ -63,14 +63,6 @@ fi
 
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-# Create local folders
-echo "Creating files..."
-mkdir "${SCRIPTDIR}/files"
-echo "Creating ovpns..."
-mkdir "${SCRIPTDIR}/ovpns"
-echo "Creating defaults..."
-mkdir "${SCRIPTDIR}/defaults"
-
 # Copy conf to tmpfiles.d
 echo "Copying openvpncertbot.conf to /etc/tmpfiles.d/openvpncertbot.conf"
 cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
@@ -82,9 +74,17 @@ useradd -m openvpncertbot
 # Move all the files to the new user
 echo "Copying directory to new user..."
 cp -r "${SCRIPTDIR}" /home/openvpncertbot/
+cd /home/openvpncertbot/OpenVPNCertBot
+
+# Create local folders
+echo "Creating files..."
+mkdir "files"
+echo "Creating ovpns..."
+mkdir "ovpns"
+echo "Creating defaults..."
+mkdir "defaults"
 
 # Change files permissions and ownership
-cd /home/openvpncertbot/OpenVPNCertBot
 echo "Changing permission and ownership..."
 chmod +x *.sh *.py
 chown openvpncertbot:openvpncertbot *
