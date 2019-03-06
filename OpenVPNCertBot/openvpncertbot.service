@@ -1,0 +1,15 @@
+[Unit]
+Description=openvpn certificate manager bot
+After=network-online.target
+
+[Service]
+Type=simple
+User=octavian
+WorkingDirectory=/home/openvpncertbot/OpenVPNCertBot
+Restart=always
+RestartSec=10
+ExecStart=/usr/bin/python OpenVPNCertBot.py TOKEN ADMIN
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
