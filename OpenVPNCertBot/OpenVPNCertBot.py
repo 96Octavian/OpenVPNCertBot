@@ -47,11 +47,17 @@ class files_container():
 
 		self.lock.acquire()
 
-		with open('./files/users.json', 'r') as f:
+		try:
+			f = open('./files/users.json', 'r')
 			self.users = json.load(f)
+		except FileNotFoundError:
+			self.users = {}
 
-		with open('./files/awaiting.json', 'r') as f:
+		try:
+			f = open('./files/awaiting.json', 'r')
 			self.awaiting = json.load(f)
+		except FileNotFoundError:
+			self.awaiting = {}
 
 		self.users_list = self.users.keys()
 
