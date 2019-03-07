@@ -249,7 +249,7 @@ def command_request(update, context):
 		return
 
 	# Check if the provided name is permitted
-	cert_name = args[0]
+	cert_name = context.args[0]
 	if not files.isValidCertName(cert_name):
 		update.message.reply_text(text="Il nome è già in uso")
 		return
@@ -305,11 +305,11 @@ def command_revoke(update, context):
 		return
 
 	# Check if he provided a name for the file
-	if len(args) != 1:
+	if len(context.args) != 1:
 		update.message.reply_text(text="Specifica solo il nome del certificato")
 		return
 
-	cert_name = args[0]
+	cert_name = context.args[0]
 	# Check if that certificate exists
 	if cert_name not in files.listUserCerts(update.message.from_user.id):
 		update.message.reply_text(text="Certificato non trovato")
@@ -389,10 +389,10 @@ def main():
 	dp.add_handler(CommandHandler('start', command_start, Filters.private))
 	dp.add_handler(CommandHandler('subscribe', command_subscribe, Filters.private))
 	dp.add_handler(CommandHandler('check', command_check, Filters.private))
-	dp.add_handler(CommandHandler('approve', command_approve, Filters.private, pass_args=True))
-	dp.add_handler(CommandHandler('revoke', command_revoke, Filters.private, pass_args=True))
+	dp.add_handler(CommandHandler('approve', command_approve, Filters.private))
+	dp.add_handler(CommandHandler('revoke', command_revoke, Filters.private))
 	dp.add_handler(CommandHandler('list', command_list_certificates, Filters.private))
-	dp.add_handler(CommandHandler('request', command_request, Filters.private, pass_args=True))
+	dp.add_handler(CommandHandler('request', command_request, Filters.private))
 
 	# log all errors
 	dp.add_error_handler(error_logger)
