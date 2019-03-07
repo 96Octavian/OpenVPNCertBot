@@ -81,11 +81,11 @@ cd /home/openvpncertbot/OpenVPNCertBot
 
 # Create local folders
 echo "Creating files..."
-mkdir "files"
+mkdir -p "files"
 echo "Creating ovpns..."
-mkdir "ovpns"
+mkdir -p "ovpns"
 echo "Creating defaults..."
-mkdir "defaults"
+mkdir -p "defaults"
 
 # Change files permissions and ownership
 echo "Changing permission and ownership..."
