@@ -68,13 +68,15 @@ echo "Copying openvpncertbot.conf to /etc/tmpfiles.d/openvpncertbot.conf"
 cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
 
 # Create new user to execute the bot
-echo "Creating new user..."
-useradd -m openvpncertbot
+if ! id -u octavian > /dev/null 2>&1
+then
+    echo "Creating new user..."
+    useradd -m openvpncertbot
+fi
 
-# Move all the files to the new user
+# Copy all the files to the new user
 echo "Copying directory to new user..."
 cp -r "${SCRIPTDIR}" /home/openvpncertbot/
-chown -R openvpncertbot:openvpncertbot /home/openvpncertbot/OpenVPNCertBot
 cd /home/openvpncertbot/OpenVPNCertBot
 
 # Create local folders
@@ -87,6 +89,7 @@ mkdir "defaults"
 
 # Change files permissions and ownership
 echo "Changing permission and ownership..."
+chown -R openvpncertbot:openvpncertbot /home/openvpncertbot/OpenVPNCertBot
 chmod +x *.sh *.py
 
 # Write the provided server address
@@ -107,4 +110,4 @@ cp openvpncertbot.service /etc/systemd/system/openvpncertbot.service
 
 # Give the user some info
 echo "The file default.txt will be used to provide clients with configuration. Edit it to suit your needs."
-echo "In addition, in the \"defaults\\\" folder every user will have its own base file"
+echo "In addition, in the \"defaults\" folder every user will have its own base file"
