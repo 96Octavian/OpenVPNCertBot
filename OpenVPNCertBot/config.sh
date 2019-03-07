@@ -66,6 +66,7 @@ SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 # Copy conf to tmpfiles.d
 echo "Copying openvpncertbot.conf to /etc/tmpfiles.d/openvpncertbot.conf"
 cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
+mkdir -p /run/openvpncertbot
 
 # Create new user to execute the bot
 if ! id -u octavian > /dev/null 2>&1
@@ -82,6 +83,12 @@ cd /home/openvpncertbot/OpenVPNCertBot
 # Create local folders
 echo "Creating files..."
 mkdir -p "files"
+if [ ! -f files/users.json ]; then
+    echo "{}" > files/users.json
+fi
+if [ ! -f files/awaiting.json ]; then
+    echo "{}" > files/awaiting.json
+fi
 echo "Creating ovpns..."
 mkdir -p "ovpns"
 echo "Creating defaults..."
