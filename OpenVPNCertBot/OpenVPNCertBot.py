@@ -258,7 +258,7 @@ def command_request(update, context):
 	password = subprocess.getoutput("openssl rand -base64 10")
 
 	# Invoke bash script to create the file
-	process = subprocess.Popen(["sudo", "./adder.sh", cert_name, password, update.message.from_user.id])
+	process = subprocess.Popen(["sudo", "./adder.sh", cert_name, password, str(update.message.from_user.id)])
 	process.wait()
 	# If exitcode is non zero, fail
 	if process.returncode != 0:
@@ -325,7 +325,7 @@ def command_revoke(update, context):
 
 	files.removeCert(update.message.from_user.id, cert_name)
 	update.message.reply_text(text="Certificato rimosso")
-	logger.info("Certificato %s dell'utente %s rimosso", cert_name, update.message.from_user.id)
+	logger.info("Certificato {} dell'utente {} rimosso".format(cert_name, update.message.from_user.id))
 
 	return
 
