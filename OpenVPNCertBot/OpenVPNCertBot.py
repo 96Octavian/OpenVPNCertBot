@@ -329,9 +329,9 @@ def command_revoke(update, context):
 
 	return
 
-def error_logger(bot, update, error):
+def error_logger(update, context):
 	"""Log Errors caused by Updates."""
-	logger.warning('Update "%s" caused error "%s"', update, error)
+	logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 def my_idle(updater, stop_signals=(SIGINT, SIGTERM, SIGABRT), update_signals=(SIGUSR1, SIGUSR2)):
 	"""Blocks until one of the signals are received and stops the updater.
@@ -381,7 +381,7 @@ def main():
 	files.load_all()
 
 	# Create the Updater and pass it your bot's token.
-	updater = Updater(sys.argv[1], user_sig_handler=signalHandler)
+	updater = Updater(sys.argv[1], user_sig_handler=signalHandler, use_context=True)
 
 	# Get the dispatcher to register handlers
 	dp = updater.dispatcher
