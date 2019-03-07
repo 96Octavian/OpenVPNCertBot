@@ -118,3 +118,4 @@ cp openvpncertbot.service /etc/systemd/system/openvpncertbot.service
 # Give the user some info
 echo "The file default.txt will be used to provide clients with configuration. Edit it to suit your needs."
 echo "In addition, in the \"defaults\" folder every user will have its own base file"
+echo "Stop the running bot (if running), run \"systemctl daemon-reaload\" and then enable/start the bot with \"systemctl start openvpncertbot\""

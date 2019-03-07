@@ -28,7 +28,7 @@ systemctl stop ${NAME}.timer
 rm -rf /etc/systemd/system/${NAME}.timer
 rm -rf /etc/systemd/system/${NAME}.service
 
-# If bot's PID is given as argument 2, notify the bot
+# If flag is set in argument 2, notify the bot
 if [ ! -z "$2" ]
 then
 	echo "${NAME}" >> "${SCRIPTDIR}/files/removed.lst"
