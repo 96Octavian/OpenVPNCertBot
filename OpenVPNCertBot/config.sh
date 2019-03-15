@@ -101,7 +101,7 @@ chmod +x *.sh *.py
 
 # Write the provided server address
 echo "Using server address..."
-sed -i -e "s/IPV4PUB/$1/g" default.txt
+sed -i -e "s/IPV4PUB/${ADDRESS}/g" default.txt
 
 # Add user to sudoers
 echo "Granting user sudoers rights..."
