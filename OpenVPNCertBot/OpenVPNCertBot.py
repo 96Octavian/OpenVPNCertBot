@@ -5,6 +5,8 @@
 Manage your certificate on your VPN with this bot
 """
 
+# TODO: Better comment
+# TODO: Better logging
 # TODO: Add license and credits
 # TODO: Allow owner to remove users
 # TODO: Improve instructions and info
@@ -192,7 +194,7 @@ def command_message(update, context):
 		return
 	try:
 		username = update.message.from_user.username
-		context.bot.sendMessage(ADMIN, username + " said:\n" + " ".join(context.args)
+		context.bot.sendMessage(ADMIN, username + " said:\n" + " ".join(context.args))
 		update.message.reply_text("Your message has been forwarded to the developer")
 	except AttributeError:
 		update.message.reply_text("Set a username to use this command")
