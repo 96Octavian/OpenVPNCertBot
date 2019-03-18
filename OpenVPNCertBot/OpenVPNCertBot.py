@@ -153,7 +153,7 @@ def command_start(update, context):
 				 <code>/subscribe</code>: request a subscription.\n\
 				 <code>/request cert_name</code>: request a certificate. Every user can have more than one.\n\
 				 <code>/revoke cert_name</code>: revoke the certificate.\n\
-				 <code>/list</code>: list your certificates.\
+				 <code>/list</code>: list your certificates.\n\
 				 <code>/message</code>: send a message to the developer", parse_mode='HTML')
 	return
 
@@ -187,12 +187,15 @@ def command_subscribe(update, context):
 	return
 
 def command_message(update, context):
+	if not len(context.args):
+		update.message.reply_text("Usage:\n/message <i>your message here</i>", parse_mode='HTML')
+		return
 	try:
 		username = update.message.from_user.username
-		context.bot.sendMessage(ADMIN, username + " said:\n" + update.message.text)
-		update.reply_text("Your message has been forwarded to the developer")
+		context.bot.sendMessage(ADMIN, username + " said:\n" + " ".join(context.args)
+		update.message.reply_text("Your message has been forwarded to the developer")
 	except AttributeError:
-		update.reply_text("Set a username to use this command")
+		update.message.reply_text("Set a username to use this command")
 	return
 
 # Check pending subscribe requests
