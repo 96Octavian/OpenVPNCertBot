@@ -154,7 +154,7 @@ def command_start(update, context):
 				 <code>/request cert_name</code>: request a certificate. Every user can have more than one.\n\
 				 <code>/revoke cert_name</code>: revoke the certificate.\n\
 				 <code>/list</code>: list your certificates.\
-				 <code>/message </code>: send a message to the developer", parse_mode='HTML')
+				 <code>/message</code>: send a message to the developer", parse_mode='HTML')
 	return
 
 # Ask for subscription
@@ -162,29 +162,27 @@ def command_subscribe(update, context):
 
 	# Check if he has already subscribed
 	if files.isSubscribed(update.message.from_user.id):
-		update.message.reply_text(text="Sei già iscritto.")
+		update.message.reply_text(text="You're already subscribed")
 		return
 
 	# Check if it is already in list for approval
 	if files.isAwaiting(update.message.from_user.id):
-		update.message.reply_text(text="Grazie. La tua iscrizione è in attesa di convalida.")
+		update.message.reply_text(text="Thank you. Your subscription is awaiting approval.")
 		return
 
 	# Add him to the waiting list
 	files.addAwaiting(update.message.from_user.id, update.message.from_user.first_name)
-	update.message.reply_text(text="Grazie. La tua iscrizione è in attesa di convalida.")
-	logger.info("Utente %s in attesa di convalida", str(update.message.from_user.id))
+	update.message.reply_text(text="Thank you. Your subscription is awaiting approval.")
+	logger.info("User {} waiting for approval".format(str(update.message.from_user.id)))
 
 	# Check if there are awaiting users
 	users = files.listAwaiting()
 	if users:
-		message = "Utenti in attesa:\n"
+		message = "Users awaiting:\n"
 		for user_id in users:
 			message += user_id + '\n'
 		context.bot.sendMessage(ADMIN, text=message)
 		message = None
-	else:
-		context.bot.sendMessage(ADMIN, "Nessun utente in attesa di approvazione")
 
 	return
 
