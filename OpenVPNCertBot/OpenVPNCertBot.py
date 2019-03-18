@@ -146,15 +146,15 @@ def authorized(update):
 
 # First message to be sent
 def command_start(update, context):
-	update.message.reply_text(text="Questo bot ti aiuterà a ricevere e rinnovare i tuoi certificati .ovpn.\n\
-				 Dopo aver richiesto l'iscrizione, sarai approvato e riceverai un certificato.\n\
-				 Questo sarà revocato dopo una settimana e dovrai richiederne uno nuovo.\n\
-				 Questi sono i comandi a tua disposizione:\n\
-				 <code>/subscribe</code>: richiedi l'iscrizione.\n\
-				 <code>/request nome_certificato</code>: richiedi un certificato. Ogni utente può richiedere più di un certificato.\n\
-				 <code>/revoke nome_certificato</code>: revoca il certificato.\n\
-				 <code>/list</code>: elenca i tuoi certificati\
-				 Per chiarimenti o consigli, non contattarmi, cavoli tuoi", parse_mode='HTML')
+	update.message.reply_text(text="This bot will help you manage your .ovpn certificates.\n\
+				 After subscription, you'll be approved and you'll receive a certificate.\n\
+				 This certificate will be revoked after a week and you'll have to request a new one.\n\
+				 These are the available commands:\n\
+				 <code>/subscribe</code>: request a subscription.\n\
+				 <code>/request cert_name</code>: request a certificate. Every user can have more than one.\n\
+				 <code>/revoke cert_name</code>: revoke the certificate.\n\
+				 <code>/list</code>: list your certificates.\
+				 <code>/message </code>: send a message to the developer", parse_mode='HTML')
 	return
 
 # Ask for subscription
@@ -188,23 +188,32 @@ def command_subscribe(update, context):
 
 	return
 
+def command_message(update, context):
+	try:
+		username = update.message.from_user.username
+		context.bot.sendMessage(ADMIN, username + " said:\n" + update.message.text)
+		update.reply_text("Your message has been forwarded to the developer")
+	except AttributeError:
+		update.reply_text("Set a username to use this command")
+	return
+
 # Check pending subscribe requests
 def command_check(update, context):
 
 	# If the sender is not me, discard
 	if not authorized(update):
-		update.message.reply_text(text="Non sei autorizzato.")
+		update.message.reply_text(text="You are not authorized")
 		return
 
 	# Check if there are awaiting users
 	users = files.listAwaiting()
 	if users:
-		message = "Utenti in attesa:\n"
+		message = "Awaiting users:\n"
 		for user_id in users:
 			message += user_id + '\n'
 		context.bot.sendMessage(ADMIN, text=message)
 	else:
-		context.bot.sendMessage(ADMIN, "Nessun utente in attesa di approvazione")
+		context.bot.sendMessage(ADMIN, "No user waiting for approval")
 
 	return
 
@@ -213,7 +222,7 @@ def command_approve(update, context):
 
 	# If the sender is not me, discard
 	if not authorized(update):
-		context.bot.SendMessage(update.message.from_user.id, "Non sei autorizzato.")
+		context.bot.SendMessage(update.message.from_user.id, "You are not authorized")
 		return
 
 	# Copy the defaults.txt file
@@ -225,10 +234,10 @@ def command_approve(update, context):
 	approved = files.approveAwaiting(context.args)
 	if approved:
 		for id in approved:
-			context.bot.sendMessage(id, "Sei stato autorizzato")
-		message = "{} utenti autorizzati".format(len(approved))
+			context.bot.sendMessage(id, "You have been approved")
+		message = "{} approved users".format(len(approved))
 	else:
-		message = "Nessun utente autorizzato"
+		message = "No user approved"
 
 	logger.info(message)
 	update.message.reply_text(message)
@@ -240,18 +249,18 @@ def command_request(update, context):
 
 	# Check if he has already subscribed
 	if not files.isSubscribed(update.message.from_user.id):
-		update.message.reply_text(text="Non sei autorizzato")
+		update.message.reply_text(text="You are not authorized")
 		return
 
 	# Check if he provided a name for the file
 	if len(context.args) != 1:
-		update.message.reply_text(text="Specifica solo il nome del certificato")
+		update.message.reply_text(text="Specify (only) the certificate's name")
 		return
 
 	# Check if the provided name is permitted
 	cert_name = context.args[0]
 	if not files.isValidCertName(cert_name):
-		update.message.reply_text(text="Il nome è già in uso")
+		update.message.reply_text(text="Certificate name not available")
 		return
 
 	# Generate a random password for the file, using bash and openssl command
@@ -262,7 +271,7 @@ def command_request(update, context):
 	process.wait()
 	# If exitcode is non zero, fail
 	if process.returncode != 0:
-		update.message.reply_text(text="Qualcosa è andato storto, riprova")
+		update.message.reply_text(text="Something went wrong, retry")
 		return
 
 	# Add file name to the list
@@ -271,9 +280,9 @@ def command_request(update, context):
 	# Send the file to the user
 	update.message.reply_document(open("ovpns/" + cert_name + '.ovpn', 'rb'),\
 		caption='Password: ' + password)
-	update.message.reply_text(text="Certificato generato")
+	update.message.reply_text(text="Certificate generated")
 
-	logger.info("Certificato %s per l'utente %s aggiunto", cert_name, str(update.message.from_user.id))
+	logger.info("Added certificate {} for user %s aggiunto".format(cert_name, str(update.message.from_user.id)))
 
 	return
 
@@ -282,17 +291,17 @@ def command_list_certificates(update, context):
 	
 	# Check if he has already subscribed
 	if not files.isSubscribed(update.message.from_user.id):
-		update.message.reply_text(text="Non sei autorizzato")
+		update.message.reply_text(text="You are not authorized")
 		return
 
 	# List every certificate he owns
 	certs = files.listUserCerts(update.message.from_user.id)
 	if certs:
-		message = "Possiedi i seguenti certificati:\n"
+		message = "You own the following certificates:\n"
 		for cert in certs:
 			message += cert + '\n'
 	else:
-		message = "Non hai certificati"
+		message = "You don't have certificates"
 	update.message.reply_text(text=message)
 	return
 
@@ -301,18 +310,18 @@ def command_revoke(update, context):
 
 	# Check if he has already subscribed
 	if not files.isSubscribed(update.message.from_user.id):
-		update.message.reply_text(text="Non sei autorizzato")
+		update.message.reply_text(text="You are not authorized")
 		return
 
 	# Check if he provided a name for the file
 	if len(context.args) != 1:
-		update.message.reply_text(text="Specifica solo il nome del certificato")
+		update.message.reply_text(text="Send (only) the certificate's name")
 		return
 
 	cert_name = context.args[0]
 	# Check if that certificate exists
 	if cert_name not in files.listUserCerts(update.message.from_user.id):
-		update.message.reply_text(text="Certificato non trovato")
+		update.message.reply_text(text="Certificate not found")
 		return
 
 	# Remove the certificate
@@ -320,12 +329,12 @@ def command_revoke(update, context):
 	process.wait()
 	# If exitcode is non zero, fail
 	if process.returncode != 0:
-		update.message.reply_text(text="Qualcosa è andato storto, riprova")
+		update.message.reply_text(text="Something went wrong, retry")
 		return
 
 	files.removeCert(update.message.from_user.id, cert_name)
-	update.message.reply_text(text="Certificato rimosso")
-	logger.info("Certificato {} dell'utente {} rimosso".format(cert_name, update.message.from_user.id))
+	update.message.reply_text(text="Certificate removed")
+	logger.info("Revoked ertificate {} from user {}".format(cert_name, update.message.from_user.id))
 
 	return
 
@@ -387,6 +396,7 @@ def main():
 	dp = updater.dispatcher
 
 	dp.add_handler(CommandHandler('start', command_start, Filters.private))
+	dp.add_handler(CommandHandler('message', command_message, Filters.private))
 	dp.add_handler(CommandHandler('subscribe', command_subscribe, Filters.private))
 	dp.add_handler(CommandHandler('check', command_check, Filters.private))
 	dp.add_handler(CommandHandler('approve', command_approve, Filters.private))
@@ -414,5 +424,5 @@ if __name__ == '__main__':
 	with open("/run/openvpncertbot/openvpncertbot.pid", "w") as f:
 		f.write(str(os.getpid()))
 
-	logger.info("File caricati, admin: %s", ADMIN)
+	logger.info("Loaded files, admin: %s", ADMIN)
 	main()
