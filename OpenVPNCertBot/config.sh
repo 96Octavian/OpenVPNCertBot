@@ -44,7 +44,7 @@ esac
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-if [ -z ${ADDRESS} ]
+if [ -z "${ADDRESS}" ]
 then
     echo "Use -i or --ipaddr to specify the server address"
     exit 1
@@ -69,7 +69,7 @@ cp openvpncertbot.conf /etc/tmpfiles.d/openvpncertbot.conf
 mkdir -p /run/openvpncertbot
 
 # Create new user to execute the bot
-if ! id -u octavian > /dev/null 2>&1
+if ! id -u openvpncertbot > /dev/null 2>&1
 then
     echo "Creating new user..."
     useradd -m openvpncertbot

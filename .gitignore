@@ -263,3 +263,4 @@ __pycache__/
 # User defined ignores
 files/
 ovpns/
+venv/
