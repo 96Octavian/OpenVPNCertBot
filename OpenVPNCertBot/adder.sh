@@ -114,7 +114,7 @@ echo "ovpn created"
     echo "Description=remove certificate ${NAME}" 
     echo ""
     echo "[Timer]"
-    echo "OnActiveSec=1w"
+    echo "OnActiveSec=1M"
 } >> /etc/systemd/system/${NAME}.timer
 
 {
