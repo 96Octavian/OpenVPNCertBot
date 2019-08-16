@@ -387,6 +387,8 @@ def signal_handler(signum, frame):
     for e in files.users:
         files.users[e] = [x for x in files.users[e] if x not in removed]
 
+    files.certs = [cert for certificate_list in files.users.values() for cert in certificate_list]
+
     files.lock.release()
 
     files.store(files.users, "users")
